@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -62,6 +63,7 @@ func (p *HelmChartInflationGeneratorPlugin) establishTmpDir() (err error) {
 }
 
 func (p *HelmChartInflationGeneratorPlugin) ValidateArgs() (err error) {
+	log.Println("validating function args")
 	if p.Name == "" {
 		return fmt.Errorf("chart name cannot be empty")
 	}
@@ -88,6 +90,7 @@ func (p *HelmChartInflationGeneratorPlugin) ValidateArgs() (err error) {
 		}
 		p.ConfigHome = filepath.Join(p.tmpDir, "helm")
 	}
+	log.Println("finished validating function args")
 	return nil
 }
 
@@ -112,6 +115,7 @@ func (p *HelmChartInflationGeneratorPlugin) absChartHome() string {
 
 func (p *HelmChartInflationGeneratorPlugin) runHelmCommand(
 	args []string) ([]byte, error) {
+	log.Println("running helm command with args: ", args)
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
 	cmd := exec.Command("helm", args...)
@@ -132,6 +136,7 @@ func (p *HelmChartInflationGeneratorPlugin) runHelmCommand(
 			stderr.String(),
 		)
 	}
+	log.Println("successfully ran helm command with args: ", args)
 	return stdout.Bytes(), err
 }
 
@@ -174,6 +179,7 @@ func (p *HelmChartInflationGeneratorPlugin) replaceValuesInline() error {
 
 // copyValuesFile to avoid branching.  TODO: get rid of this.
 func (p *HelmChartInflationGeneratorPlugin) copyValuesFile() (string, error) {
+	log.Println("copying values file")
 	var b []byte
 	var err error
 	b, err = ioutil.ReadFile(p.ValuesFile)
@@ -182,6 +188,8 @@ func (p *HelmChartInflationGeneratorPlugin) copyValuesFile() (string, error) {
 		if u, err := url.Parse(path); err == nil && (u.Scheme == "http" || u.Scheme == "https") {
 			var hc *http.Client
 			hc = &http.Client{}
+
+			log.Println("attempting to get remote values file")
 
 			resp, err := hc.Get(path)
 			if err != nil {
@@ -192,8 +200,10 @@ func (p *HelmChartInflationGeneratorPlugin) copyValuesFile() (string, error) {
 			if err != nil {
 				return "", err
 			}
+			log.Println("successfully got remote values file")
 		}
 	}
+	log.Println("finished copying values file")
 	return p.writeValuesBytes(b)
 }
 
@@ -223,9 +233,11 @@ func (p *HelmChartInflationGeneratorPlugin) Generate() (rm resmap.ResMap, err er
 			return nil, fmt.Errorf(
 				"no repo specified for pull, no chart found at '%s'", path)
 		}
+		log.Println("attempting to pull chart")
 		if _, err := p.runHelmCommand(p.pullCommand()); err != nil {
 			return nil, err
 		}
+		log.Println("successfully pulled chart")
 	}
 	if len(p.ValuesInline) > 0 {
 		p.ValuesFile, err = p.createNewMergedValuesFile()

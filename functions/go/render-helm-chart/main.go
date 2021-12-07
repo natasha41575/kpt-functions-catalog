@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/GoogleContainerTools/kpt-functions-catalog/functions/go/render-helm-chart/generated"
@@ -34,6 +35,13 @@ const (
 
 //nolint
 func main() {
+	f, err := os.OpenFile("./logfile.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
+
+	log.SetOutput(f)
+
 	asp := HelmChartProcessor{}
 	cmd := command.Build(&asp, command.StandaloneEnabled, false)
 
@@ -41,6 +49,7 @@ func main() {
 	cmd.Long = generated.RenderHelmChartLong
 	cmd.Example = generated.RenderHelmChartExamples
 	if err := cmd.Execute(); err != nil {
+		log.Println("failed with error: ", err.Error())
 		os.Exit(1)
 	}
 }
@@ -144,6 +153,7 @@ func run(resourceList *framework.ResourceList) error {
 	}
 	resourceList.Items, err = fn.Run(resourceList.Items)
 	if err != nil {
+
 		return fmt.Errorf("failed to run function: %w", err)
 	}
 	return nil
